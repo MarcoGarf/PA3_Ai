@@ -72,6 +72,68 @@ class MonteCarloAgent:
             avg_reward = self.state_values[state] / max(1, self.state_visit_counts[state])
             print(f"{state}: {avg_reward}")
 
+class ValueIterationMDP:
+    def __init__(self, states, graph_structure, discount_factor=0.99, tolerance=0.001):
+        self.states = states
+        self.graph_structure = graph_structure
+        self.discount_factor = discount_factor
+        self.tolerance = tolerance
+        self.values = {state: 0 for state in states}
+
+    def bellman_equation(self, state, actions_for_state):
+        expected_values = [
+            sum(
+                probability * (reward + self.discount_factor * self.values[next_state])
+                for (next_state, probability), reward in zip(
+                    self.graph_structure[state][action]['next_states'],
+                    self.graph_structure[state][action]['rewards']
+                )
+            )
+            for action in actions_for_state
+        ]
+        return max(expected_values)
+
+    def get_optimal_action(self, state, actions_for_state):
+        action_values = {
+            action: self.bellman_equation(state, actions_for_state)
+            for action in actions_for_state
+        }
+        optimal_action = max(action_values, key=action_values.get)
+        return optimal_action
+
+    def value_iteration(self):
+        iteration = 0
+        max_change = float('inf')
+
+        while max_change > self.tolerance:
+            max_change = 0
+
+            for state in self.states:
+                actions_for_state = list(self.graph_structure[state].keys())
+                previous_value = self.values[state]
+                self.values[state] = self.bellman_equation(state, actions_for_state)
+                max_change = max(max_change, abs(self.values[state] - previous_value))
+
+            print(f"\nIteration {iteration + 1}:")
+            for state in self.states:
+                print(f"{state}: {self.values[state]}")
+
+            iteration += 1
+
+        print(f"\nNumber of iterations: {iteration}")
+        print("Final values:")
+        for state in self.states:
+            print(f"{state}: {self.values[state]}")
+
+        optimal_policy = {
+            state: self.get_optimal_action(state, list(self.graph_structure[state].keys()))
+            for state in self.states
+        }
+        print("\nOptimal Policy:")
+        for state, action in optimal_policy.items():
+            print(f"{state}: {action}")
+
+
 
 # Define your MDP parameters
 states = ['RU8P', 'TU10P', 'RU10P', 'RD10P', 'RU8A', 'RD8A', 'TU10A', 'RU10A', 'RD10A', 'TD10A', 'CLASS']
@@ -82,6 +144,7 @@ graph_structure = {
         'R': {'next_states': [('RU10P', 1.0)], 'rewards': [0]},
         'S': {'next_states': [('RD10P', 1.0)], 'rewards': [-1]}
     },
+
     'TU10P': {
         'P': {'next_states': [('RU10A', 1.0)], 'rewards': [+2]},
         'R': {'next_states': [('RU8A', 1.0)], 'rewards': [0]}
@@ -143,8 +206,17 @@ mdp = MDP(states, graph_structure)
 # Create Monte Carlo agent
 agent = MonteCarloAgent(mdp)
 
+print("MONTE CARLO SIMULATION")
 # Run Monte Carlo simulation
 agent.monte_carlo(num_episodes=50)
+
+print("VALUE ITERATION")
+actions = ['P', 'R', 'S']
+# Create MDP object
+mdp = ValueIterationMDP(states, actions, graph_structure)
+
+# Run Value Iteration
+mdp.value_iteration()
 
 
 for state, actions in graph_structure.items():
@@ -155,9 +227,11 @@ for state, actions in graph_structure.items():
             G.add_edge(state, next_state, label=f"{action}\n{reward}\n{probability}")
 
 # Plot the graph
+"""
 pos = nx.spring_layout(G)
 edge_labels = nx.get_edge_attributes(G, 'label')
 nx.draw(G, pos, with_labels=True, node_size=2000, node_color='skyblue', font_size=10)
 nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
 plt.title("MDP Graph with Rewards, Probabilities, and Actions")
 plt.show()
+"""
