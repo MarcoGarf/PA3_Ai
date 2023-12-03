@@ -73,9 +73,10 @@ class MonteCarloAgent:
             print(f"{state}: {avg_reward}")
 
 class ValueIterationMDP:
-    def __init__(self, states, graph_structure, discount_factor=0.99, tolerance=0.001):
+    def __init__(self, states, graph_structure, actions=None,discount_factor=0.99, tolerance=0.001):
         self.states = states
         self.graph_structure = graph_structure
+        self.actions = actions
         self.discount_factor = discount_factor
         self.tolerance = tolerance
         self.values = {state: 0 for state in states}
@@ -94,6 +95,9 @@ class ValueIterationMDP:
         return max(expected_values)
 
     def get_optimal_action(self, state, actions_for_state):
+        if not actions_for_state:
+            return None
+
         action_values = {
             action: self.bellman_equation(state, actions_for_state)
             for action in actions_for_state
@@ -109,7 +113,12 @@ class ValueIterationMDP:
             max_change = 0
 
             for state in self.states:
-                actions_for_state = list(self.graph_structure[state].keys())
+                actions_for_state = list(self.graph_structure.get(state, {}).keys())
+
+                if not actions_for_state:
+                    self.values[state] = 0
+                    continue
+
                 previous_value = self.values[state]
                 self.values[state] = self.bellman_equation(state, actions_for_state)
                 max_change = max(max_change, abs(self.values[state] - previous_value))
@@ -139,6 +148,7 @@ class ValueIterationMDP:
 states = ['RU8P', 'TU10P', 'RU10P', 'RD10P', 'RU8A', 'RD8A', 'TU10A', 'RU10A', 'RD10A', 'TD10A', 'CLASS']
 # Define the graph structure with rewards, transition probabilities, and actions
 graph_structure = {
+    'CLASS': {},
     'RU8P': {
         'P': {'next_states': [('TU10P', 1.0)], 'rewards': [+2]},
         'R': {'next_states': [('RU10P', 1.0)], 'rewards': [0]},
@@ -213,7 +223,7 @@ agent.monte_carlo(num_episodes=50)
 print("VALUE ITERATION")
 actions = ['P', 'R', 'S']
 # Create MDP object
-mdp = ValueIterationMDP(states, actions, graph_structure)
+mdp = ValueIterationMDP(states, graph_structure, actions=actions)
 
 # Run Value Iteration
 mdp.value_iteration()
@@ -227,11 +237,11 @@ for state, actions in graph_structure.items():
             G.add_edge(state, next_state, label=f"{action}\n{reward}\n{probability}")
 
 # Plot the graph
-"""
+
 pos = nx.spring_layout(G)
 edge_labels = nx.get_edge_attributes(G, 'label')
 nx.draw(G, pos, with_labels=True, node_size=2000, node_color='skyblue', font_size=10)
 nx.draw_networkx_edge_labels(G, pos, edge_labels=edge_labels)
 plt.title("MDP Graph with Rewards, Probabilities, and Actions")
 plt.show()
-"""
+
