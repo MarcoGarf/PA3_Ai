@@ -120,7 +120,33 @@ class ValueIterationMDP:
                     continue
 
                 previous_value = self.values[state]
-                self.values[state] = self.bellman_equation(state, actions_for_state)
+
+                new_value = self.bellman_equation(state, actions_for_state)
+
+                action_values = {
+                    action:sum(
+                        probability * (reward + self.discount_factor * self.values[next_state])
+                        for (next_state, probability), reward in zip(
+                            self.graph_structure[state][action]['next_states'],
+                            self.graph_structure[state][action]['rewards']
+                        )
+                    )
+                    for action in actions_for_state
+                }
+
+                optimal_action = max(action_values, key=action_values.get)
+
+                print(f"State: {state}")
+                print(f"Previous Value: {previous_value}")
+                print(f"New Value: {new_value}")
+                print("Action Values:")
+
+                for action, value in action_values.items():
+                    print(f" - Action: {action}, Value: {value}")
+                print(f"Optimal Action: {optimal_action}")
+                print()
+
+                self.values[state] = new_value
                 max_change = max(max_change, abs(self.values[state] - previous_value))
 
             print(f"\nIteration {iteration + 1}:")
@@ -237,7 +263,6 @@ for state, actions in graph_structure.items():
             G.add_edge(state, next_state, label=f"{action}\n{reward}\n{probability}")
 
 # Plot the graph
-
 pos = nx.spring_layout(G)
 edge_labels = nx.get_edge_attributes(G, 'label')
 nx.draw(G, pos, with_labels=True, node_size=2000, node_color='skyblue', font_size=10)
