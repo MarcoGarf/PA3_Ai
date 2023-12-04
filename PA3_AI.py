@@ -169,6 +169,81 @@ class ValueIterationMDP:
             print(f"{state}: {action}")
 
 
+#Class for Q-Learning
+class QLearningAgent:
+    def __init__(self, mdp, alpha=0.2, discount_factor=0.99, epsilon=0.1):
+        self.mdp = mdp
+        self.alpha = alpha
+        self.discount_factor = discount_factor
+        self.epsilon = epsilon
+        self.q_values = {state: {action: 0 for action in actions} for state, actions in mdp.graph_structure.items()}
+        
+    def choose_action(self, state):
+        valid_actions = list(self.mdp.graph_structure[state].keys())
+        if random.uniform(0, 1) < self.epsilon and valid_actions:
+            return random.choice(valid_actions)
+        elif valid_actions:
+            return max(self.q_values[state], key=self.q_values[state].get)
+        else:
+            # If no valid actions, return a random action
+            return random.choice(list(self.mdp.graph_structure.keys()))
+
+        
+    def q_learning(self, num_episodes):
+        for episode in range(num_episodes):
+            alpha = self.alpha
+            current_state = 'RU8P'
+            while current_state != 'CLASS':
+                action = self.choose_action(current_state)
+                
+                next_states = self.mdp.graph_structure[current_state][action]['next_states']
+                rewards = self.mdp.graph_structure[current_state][action]['rewards']
+
+                if not next_states:
+                    break
+
+                next_state, probability = random.choices(next_states, weights=[p for s, p in next_states])[0]
+                
+                current_q_value = self.q_values[current_state].get(action, 0)
+
+                if current_state not in self.q_values:
+                    self.q_values[current_state] = {}
+
+                if action not in self.q_values[current_state]:
+                    self.q_values[current_state][action] = 0
+
+                if next_state in self.q_values and self.q_values[next_state]:
+                    next_max_q_value = max(self.q_values[next_state].values(), default = 0)
+                else:
+                    next_max_q_value = 0
+
+                immediate_reward = rewards[next_states.index((next_state, probability))]
+                
+                new_q_value = current_q_value + alpha * (immediate_reward + self.discount_factor * next_max_q_value - current_q_value)
+                
+                print(f"State: {current_state}, Action: {action}")
+                print(f"Previous Q-value: {current_q_value}")
+                print(f"New Q-value: {new_q_value}")
+                print(f"Immediate Reward: {immediate_reward}")
+                print(f"Q-value for Next State: {next_max_q_value}")
+                print()
+                
+                self.q_values[current_state][action] = new_q_value
+                current_state = next_state
+                
+                alpha *= 0.995
+            
+        print("\nNumber of Episodes:", num_episodes)
+        print("\nFinal Q-values:")
+        for state, actions in self.q_values.items():
+            print(f"{state}: {actions}")
+        
+        print("\nOptimal Policy:")
+        optimal_policy = {}
+        for state, actions in self.q_values.items():
+            optimal_policy[state] = max(actions, key=actions.get)
+        print(optimal_policy)
+
 
 # Define your MDP parameters
 states = ['RU8P', 'TU10P', 'RU10P', 'RD10P', 'RU8A', 'RD8A', 'TU10A', 'RU10A', 'RD10A', 'TD10A', 'CLASS']
@@ -233,6 +308,12 @@ graph_structure = {
     
 }
 
+for state in states:
+    if state not in graph_structure or not graph_structure[state]:
+        graph_structure[state] = {'default_action': {'next_states': [(state, 1.0)], 'rewards': [0]}}
+
+
+
 # Create a directed graph from the defined structure
 G = nx.DiGraph()
 
@@ -253,6 +334,15 @@ mdp = ValueIterationMDP(states, graph_structure, actions=actions)
 
 # Run Value Iteration
 mdp.value_iteration()
+
+#Creating the Q-learning agent
+q_agent = QLearningAgent(mdp)
+
+print()
+print("Q-LEARNING")
+
+#running !-learning
+q_agent.q_learning(num_episodes=50)
 
 
 for state, actions in graph_structure.items():
