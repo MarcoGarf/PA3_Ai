@@ -171,11 +171,12 @@ class ValueIterationMDP:
 
 #Class for Q-Learning
 class QLearningAgent:
-    def __init__(self, mdp, alpha=0.2, discount_factor=0.99, epsilon=0.1):
+    def __init__(self, mdp, alpha=0.2, discount_factor=0.99, epsilon=0.1, tolerance=0.001):
         self.mdp = mdp
         self.alpha = alpha
         self.discount_factor = discount_factor
         self.epsilon = epsilon
+        self.tolerance = tolerance
         self.q_values = {state: {action: 0 for action in actions} for state, actions in mdp.graph_structure.items()}
         
     def choose_action(self, state):
@@ -189,9 +190,11 @@ class QLearningAgent:
             return random.choice(list(self.mdp.graph_structure.keys()))
 
         
-    def q_learning(self, num_episodes):
-        for episode in range(num_episodes):
-            alpha = self.alpha
+    def q_learning(self):
+        max_change = float('inf')
+        alpha = self.alpha
+        while max_change > self.tolerance:
+            max_change = 0
             current_state = 'RU8P'
             while current_state != 'CLASS':
                 action = self.choose_action(current_state)
@@ -220,7 +223,7 @@ class QLearningAgent:
                 immediate_reward = rewards[next_states.index((next_state, probability))]
                 
                 new_q_value = current_q_value + alpha * (immediate_reward + self.discount_factor * next_max_q_value - current_q_value)
-                
+                max_change = max(max_change, abs(new_q_value - current_q_value))
                 print(f"State: {current_state}, Action: {action}")
                 print(f"Previous Q-value: {current_q_value}")
                 print(f"New Q-value: {new_q_value}")
@@ -231,9 +234,8 @@ class QLearningAgent:
                 self.q_values[current_state][action] = new_q_value
                 current_state = next_state
                 
-                alpha *= 0.995
+            alpha *= 0.995
             
-        print("\nNumber of Episodes:", num_episodes)
         print("\nFinal Q-values:")
         for state, actions in self.q_values.items():
             print(f"{state}: {actions}")
@@ -342,7 +344,7 @@ print()
 print("Q-LEARNING")
 
 #running !-learning
-q_agent.q_learning(num_episodes=50)
+q_agent.q_learning()
 
 
 for state, actions in graph_structure.items():
